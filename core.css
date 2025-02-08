@@ -1,0 +1,116 @@
+/* core.css
+ * Core design system styles for noprofits.org
+ * Version: 1.0.0
+ */
+
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Typography */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.6;
+    color: #fff;
+    background-color: #1a1a1a;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+h1, h2, h3 {
+    margin: 1rem 0;
+    font-weight: 600;
+    color: #fff;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+p {
+    margin-bottom: 1rem;
+    color: #94a3b8;
+}
+
+/* Links */
+a {
+    color: #4299e1;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Layout & Grid Base */
+.grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* Colors */
+:root {
+    --color-primary: #4299e1;
+    --color-background: #1a1a1a;
+    --color-surface: #000;
+    --color-border: #333;
+    --color-text: #fff;
+    --color-text-muted: #888;
+    --color-error: #fc8181;
+}
+
+/* Spacing */
+:root {
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+}
+
+/* Accessibility */
+:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Dark Mode Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}
+
+/* Placeholder styles */
+::placeholder {
+    color: var(--color-text-muted);
+}
