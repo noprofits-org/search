@@ -1,7 +1,8 @@
-// storage.js - Client-side storage utilities for favorites and recent searches
+// storage.js - Client-side storage utilities for favorites, recent searches, and theme
 
 const RECENT_SEARCHES_KEY = 'np_recent_searches';
 const FAVORITES_KEY = 'np_favorites';
+const THEME_KEY = 'np_theme';
 const MAX_RECENT_SEARCHES = 5;
 
 /**
@@ -115,4 +116,49 @@ export function clearFavorites() {
     } catch (error) {
         console.error('Error clearing favorites:', error);
     }
+}
+
+/**
+ * Theme Management
+ */
+
+export function getTheme() {
+    try {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        // Default to dark mode if no preference is saved
+        return savedTheme || 'dark';
+    } catch (error) {
+        console.error('Error reading theme:', error);
+        return 'dark';
+    }
+}
+
+export function setTheme(theme) {
+    try {
+        localStorage.setItem(THEME_KEY, theme);
+        applyTheme(theme);
+    } catch (error) {
+        console.error('Error saving theme:', error);
+    }
+}
+
+export function applyTheme(theme) {
+    const root = document.documentElement;
+
+    if (theme === 'light') {
+        root.setAttribute('data-theme', 'light');
+    } else {
+        root.removeAttribute('data-theme');
+    }
+}
+
+export function toggleTheme() {
+    const currentTheme = getTheme();
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    return newTheme;
+}
+
+export function getThemeIcon(theme) {
+    return theme === 'dark' ? '☀️' : '🌙';
 }

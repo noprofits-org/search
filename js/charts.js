@@ -2,6 +2,21 @@
 
 import { numberWithCommas } from './utils.js';
 
+/**
+ * Get theme-aware colors for charts
+ */
+function getChartColors() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+    return {
+        gridColor: isLight ? '#e2e8f0' : '#333',
+        textColor: isLight ? '#1a202c' : '#fff',
+        revenue: '#4299e1',
+        expenses: '#f56565',
+        assets: '#48bb78'
+    };
+}
+
 function renderFinancialTrendsChart(containerId, filings) {
     const container = document.getElementById(containerId);
     if (!container) {
@@ -23,7 +38,7 @@ function renderFinancialTrendsChart(containerId, filings) {
             assets: filing.totassetsend || 0
         }))
         .sort((a, b) => a.year - b.year); // Sort by year ascending
-    
+
     console.log('Processed chart data:', chartData);
 
     // Format dollar amounts
@@ -32,6 +47,9 @@ function renderFinancialTrendsChart(containerId, filings) {
         if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
         return `$${value}`;
     };
+
+    // Get theme colors
+    const colors = getChartColors();
 
        // Create the chart
        try {
@@ -43,24 +61,24 @@ function renderFinancialTrendsChart(containerId, filings) {
                     {
                         label: 'Revenue',
                         data: chartData.map(d => d.revenue),
-                        borderColor: '#4299e1',
-                        backgroundColor: '#4299e1',
+                        borderColor: colors.revenue,
+                        backgroundColor: colors.revenue,
                         tension: 0.1,
                         pointRadius: 0
                     },
                     {
                         label: 'Expenses',
                         data: chartData.map(d => d.expenses),
-                        borderColor: '#f56565',
-                        backgroundColor: '#f56565',
+                        borderColor: colors.expenses,
+                        backgroundColor: colors.expenses,
                         tension: 0.1,
                         pointRadius: 0
                     },
                     {
                         label: 'Assets',
                         data: chartData.map(d => d.assets),
-                        borderColor: '#48bb78',
-                        backgroundColor: '#48bb78',
+                        borderColor: colors.assets,
+                        backgroundColor: colors.assets,
                         tension: 0.1,
                         pointRadius: 0
                     }
@@ -73,7 +91,7 @@ function renderFinancialTrendsChart(containerId, filings) {
                     legend: {
                         position: 'top',
                         labels: {
-                            color: '#fff'
+                            color: colors.textColor
                         }
                     },
                     tooltip: {
@@ -94,18 +112,18 @@ function renderFinancialTrendsChart(containerId, filings) {
                 scales: {
                     x: {
                         grid: {
-                            color: '#333'
+                            color: colors.gridColor
                         },
                         ticks: {
-                            color: '#fff'
+                            color: colors.textColor
                         }
                     },
                     y: {
                         grid: {
-                            color: '#333'
+                            color: colors.gridColor
                         },
                         ticks: {
-                            color: '#fff',
+                            color: colors.textColor,
                             callback: function(value) {
                                 return formatDollar(value);
                             }

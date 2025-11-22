@@ -11,10 +11,14 @@ import {
     addRecentSearch,
     getFavorites,
     toggleFavorite,
-    isFavorite
+    isFavorite,
+    getTheme,
+    toggleTheme,
+    applyTheme,
+    getThemeIcon
 } from './storage.js';
 
-let searchInput, searchButton, resultsContainer, modal;
+let searchInput, searchButton, resultsContainer, modal, themeToggle;
 
 /**
  * Display historical filings data in a table format
@@ -443,10 +447,22 @@ document.addEventListener('DOMContentLoaded', () => {
     searchButton = document.getElementById('searchButton');
     resultsContainer = document.getElementById('resultsContainer');
     modal = document.getElementById('analysisModal');
+    themeToggle = document.getElementById('themeToggle');
+
+    // Apply saved theme on page load
+    const currentTheme = getTheme();
+    applyTheme(currentTheme);
+    updateThemeIcon(currentTheme);
 
     // Show recent searches and favorites on page load
     showRecentSearches();
     displayFavorites();
+
+    // Theme toggle event
+    themeToggle.addEventListener('click', () => {
+        const newTheme = toggleTheme();
+        updateThemeIcon(newTheme);
+    });
 
     searchButton.addEventListener('click', handleSearch);
     searchInput.addEventListener('keypress', (e) => {
@@ -457,6 +473,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target === modal) closeModal();
     };
 });
+
+/**
+ * Update theme toggle icon
+ */
+function updateThemeIcon(theme) {
+    const icon = themeToggle.querySelector('.theme-icon');
+    if (icon) {
+        icon.textContent = getThemeIcon(theme);
+        themeToggle.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
+    }
+}
 
 // Export functions needed globally
 window.handleSearch = handleSearch;
