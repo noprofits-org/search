@@ -6,6 +6,13 @@ import {
     numberWithCommas
 } from './utils.js';
 import { renderFinancialTrendsChart } from './charts.js';
+import {
+    getRecentSearches,
+    addRecentSearch,
+    getFavorites,
+    toggleFavorite,
+    isFavorite
+} from './storage.js';
 
 let searchInput, searchButton, resultsContainer, modal;
 
@@ -67,9 +74,24 @@ function displayResults(data) {
     // Clear any existing results
     resultsContainer.innerHTML = '';
 
-    const resultsHTML = data.organizations.map(org => `
+    const resultsHTML = data.organizations.map(org => {
+        const favorited = isFavorite(org.ein);
+        const favoriteIcon = favorited ? '★' : '☆';
+        const favoriteClass = favorited ? 'favorited' : '';
+
+        return `
         <div class="org-card">
-            <div class="org-name">${org.name}</div>
+            <div class="org-card-header">
+                <div class="org-name">${org.name}</div>
+                <button class="favorite-btn ${favoriteClass}"
+                        data-ein="${org.ein}"
+                        data-name="${org.name.replace(/"/g, '&quot;')}"
+                        data-city="${org.city || ''}"
+                        data-state="${org.state || ''}"
+                        title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">
+                    ${favoriteIcon}
+                </button>
+            </div>
             <div class="org-meta">
                 EIN: ${org.ein}<br>
                 Location: ${org.city}, ${org.state}<br>
@@ -82,16 +104,104 @@ function displayResults(data) {
                 </a>
             </div>
         </div>
-    `);
+    `;
+    });
 
     // Append the new results to the container
     resultsContainer.innerHTML += resultsHTML.join('');
+
+    // Add event listeners to favorite buttons
+    resultsContainer.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', handleFavoriteClick);
+    });
 
     // Now you can add a results count element if needed
     const resultsCount = document.createElement('div');
     resultsCount.classList.add('results-count');
     resultsCount.textContent = `Found ${data.total_results} results`;
     resultsContainer.appendChild(resultsCount);
+}
+
+/**
+ * Handle favorite button click
+ */
+function handleFavoriteClick(event) {
+    event.preventDefault();
+    const btn = event.currentTarget;
+    const ein = btn.dataset.ein;
+    const name = btn.dataset.name;
+    const city = btn.dataset.city;
+    const state = btn.dataset.state;
+
+    const result = toggleFavorite(ein, name, { city, state });
+
+    // Update button appearance
+    if (result.action === 'added') {
+        btn.textContent = '★';
+        btn.classList.add('favorited');
+        btn.title = 'Remove from favorites';
+    } else {
+        btn.textContent = '☆';
+        btn.classList.remove('favorited');
+        btn.title = 'Add to favorites';
+    }
+
+    // Update favorites display if on favorites tab
+    displayFavorites();
+}
+
+/**
+ * Display favorites in the favorites tab
+ */
+function displayFavorites() {
+    const favoritesContainer = document.getElementById('favoritesContainer');
+    if (!favoritesContainer) return;
+
+    const favorites = getFavorites();
+
+    if (favorites.length === 0) {
+        favoritesContainer.innerHTML = `
+            <div class="empty-state">
+                <p>You haven't saved any favorite organizations yet.</p>
+                <p>Click the ★ button on any organization to save it to your favorites.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const favoritesHTML = favorites.map(fav => `
+        <div class="org-card">
+            <div class="org-card-header">
+                <div class="org-name">${fav.name}</div>
+                <button class="favorite-btn favorited"
+                        data-ein="${fav.ein}"
+                        data-name="${fav.name.replace(/"/g, '&quot;')}"
+                        data-city="${fav.city || ''}"
+                        data-state="${fav.state || ''}"
+                        title="Remove from favorites">
+                    ★
+                </button>
+            </div>
+            <div class="org-meta">
+                EIN: ${fav.ein}<br>
+                ${fav.city && fav.state ? `Location: ${fav.city}, ${fav.state}<br>` : ''}
+                <a href="https://projects.propublica.org/nonprofits/organizations/${fav.ein}" target="_blank">
+                    View on ProPublica
+                </a>
+                <br>
+                <a href="#" onclick="showAnalysis('${fav.ein}', '${fav.name.replace(/'/g, "\\'")}'); return false;">
+                    NoProfit Quick Analysis
+                </a>
+            </div>
+        </div>
+    `).join('');
+
+    favoritesContainer.innerHTML = favoritesHTML;
+
+    // Add event listeners to favorite buttons
+    favoritesContainer.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', handleFavoriteClick);
+    });
 }
 
 function getOrgDetailsSection(org) {
@@ -216,8 +326,66 @@ async function showAnalysis(ein, orgName) {
 }
 
 /**
+ * Display recent searches
+ */
+function displayRecentSearches() {
+    const recentSearches = getRecentSearches();
+
+    if (recentSearches.length === 0) {
+        return '';
+    }
+
+    return `
+        <div class="recent-searches">
+            <div class="recent-searches-label">Recent searches:</div>
+            <div class="recent-searches-list">
+                ${recentSearches.map(search => `
+                    <button class="recent-search-item" data-search="${search}">
+                        ${search}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Show recent searches in the UI
+ */
+function showRecentSearches() {
+    const filtersContainer = document.getElementById('filters');
+    if (filtersContainer) {
+        filtersContainer.innerHTML = displayRecentSearches();
+
+        // Add click handlers to recent search items
+        filtersContainer.querySelectorAll('.recent-search-item').forEach(button => {
+            button.addEventListener('click', () => {
+                const searchTerm = button.dataset.search;
+                searchInput.value = searchTerm;
+                handleSearch();
+            });
+        });
+    }
+}
+
+/**
  * Handle the search process
  */
+/**
+ * Show skeleton loading state
+ */
+function showSkeletonLoader() {
+    const skeletons = Array(3).fill(0).map(() => `
+        <div class="skeleton-card">
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line short"></div>
+        </div>
+    `).join('');
+
+    return `<div class="skeleton-container">${skeletons}</div>`;
+}
+
 async function handleSearch() {
     console.log('Search triggered');
     const searchTerm = searchInput.value.trim();
@@ -226,7 +394,7 @@ async function handleSearch() {
 
     try {
         searchButton.disabled = true;
-        resultsContainer.innerHTML = '<div class="loading">Searching...</div>';
+        resultsContainer.innerHTML = showSkeletonLoader();
 
         const timeoutId = setTimeout(() => {
             console.error('Search timed out');
@@ -242,13 +410,18 @@ async function handleSearch() {
         if (!data || !data.organizations) {
             throw new Error('Invalid response from search');
         }
-        displayResults(data); // <--- This line was missing!
+
+        // Save to recent searches
+        addRecentSearch(searchTerm);
+        showRecentSearches();
+
+        displayResults(data);
     } catch (error) {
         console.error('Search error:', error);
         resultsContainer.innerHTML = `
             <div class="error-message">
                 Error: ${error.message}<br>
-                Please try again later or visit 
+                Please try again later or visit
                 <a href="https://projects.propublica.org/nonprofits/" target="_blank">
                     ProPublica Nonprofit Explorer
                 </a> directly.
@@ -272,6 +445,10 @@ document.addEventListener('DOMContentLoaded', () => {
     searchButton = document.getElementById('searchButton');
     resultsContainer = document.getElementById('resultsContainer');
     modal = document.getElementById('analysisModal');
+
+    // Show recent searches and favorites on page load
+    showRecentSearches();
+    displayFavorites();
 
     searchButton.addEventListener('click', handleSearch);
     searchInput.addEventListener('keypress', (e) => {
