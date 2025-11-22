@@ -206,6 +206,45 @@ function displayFavorites() {
     });
 }
 
+/**
+ * Get latest filing data with all fields
+ */
+function getLatestFiling(data) {
+    return data.filings_with_data && data.filings_with_data.length > 0
+        ? data.filings_with_data[0]
+        : {};
+}
+
+/**
+ * Calculate financial health ratios
+ */
+function calculateRatios(filing) {
+    const ratios = {};
+
+    if (filing.totrevenue && filing.totfuncexpns) {
+        // Program expense ratio (what % goes to programs vs overhead)
+        const programExpenses = filing.totfuncexpns - (filing.compnsatncurrofcr || 0);
+        ratios.programRatio = ((programExpenses / filing.totfuncexpns) * 100).toFixed(1);
+
+        // Surplus/Deficit
+        ratios.surplus = filing.totrevenue - filing.totfuncexpns;
+        ratios.surplusRatio = ((ratios.surplus / filing.totrevenue) * 100).toFixed(1);
+    }
+
+    if (filing.totassetsend && filing.totfuncexpns) {
+        // Months of operating reserves
+        const monthlyExpenses = filing.totfuncexpns / 12;
+        ratios.monthsReserve = (filing.totassetsend / monthlyExpenses).toFixed(1);
+    }
+
+    if (filing.grsincfndrsng && filing.lessdirfndrsng) {
+        // Fundraising efficiency (return per dollar spent)
+        ratios.fundraisingROI = (filing.grsincfndrsng / filing.lessdirfndrsng).toFixed(2);
+    }
+
+    return ratios;
+}
+
 function getOrgDetailsSection(org) {
     return `
         <div class="section">
@@ -244,6 +283,218 @@ function getOrgDetailsSection(org) {
                         ${org.website ? `Website: <a href="${org.website}" target="_blank" class="text-blue-500">${org.website}</a>` : ''}
                     </div>
                 </div>
+            </div>
+        </div>
+    `;
+}
+
+function getRevenueBreakdownSection(filing) {
+    if (!filing || !filing.totrevenue) return '';
+
+    const revenue = {
+        contributions: filing.totcntrbgfts || 0,
+        program: filing.totprgmrevnue || 0,
+        investment: filing.invstmntinc || 0,
+        fundraising: filing.netincfndrsng || 0,
+        gaming: filing.netincgaming || 0,
+        rental: filing.netrntlinc || 0,
+        other: filing.grsincother || 0
+    };
+
+    // Only show if we have at least one revenue source
+    if (Object.values(revenue).every(v => v === 0)) return '';
+
+    return `
+        <div class="section">
+            <h2 class="section-header">Revenue Sources (${filing.tax_prd_yr})</h2>
+            <div class="metric-grid">
+                ${revenue.contributions > 0 ? `
+                <div class="metric-card">
+                    <h3>Contributions & Grants</h3>
+                    <div class="metric-value">${formatCurrency(revenue.contributions)}</div>
+                    <div class="metric-label">${((revenue.contributions / filing.totrevenue) * 100).toFixed(1)}% of revenue</div>
+                </div>
+                ` : ''}
+                ${revenue.program > 0 ? `
+                <div class="metric-card">
+                    <h3>Program Service Revenue</h3>
+                    <div class="metric-value">${formatCurrency(revenue.program)}</div>
+                    <div class="metric-label">${((revenue.program / filing.totrevenue) * 100).toFixed(1)}% of revenue</div>
+                </div>
+                ` : ''}
+                ${revenue.investment > 0 ? `
+                <div class="metric-card">
+                    <h3>Investment Income</h3>
+                    <div class="metric-value">${formatCurrency(revenue.investment)}</div>
+                    <div class="metric-label">${((revenue.investment / filing.totrevenue) * 100).toFixed(1)}% of revenue</div>
+                </div>
+                ` : ''}
+                ${revenue.fundraising > 0 ? `
+                <div class="metric-card">
+                    <h3>Net Fundraising Events</h3>
+                    <div class="metric-value">${formatCurrency(revenue.fundraising)}</div>
+                    <div class="metric-label">${((revenue.fundraising / filing.totrevenue) * 100).toFixed(1)}% of revenue</div>
+                </div>
+                ` : ''}
+                ${revenue.gaming > 0 ? `
+                <div class="metric-card">
+                    <h3>Gaming Income</h3>
+                    <div class="metric-value">${formatCurrency(revenue.gaming)}</div>
+                    <div class="metric-label">${((revenue.gaming / filing.totrevenue) * 100).toFixed(1)}% of revenue</div>
+                </div>
+                ` : ''}
+                ${revenue.rental > 0 ? `
+                <div class="metric-card">
+                    <h3>Net Rental Income</h3>
+                    <div class="metric-value">${formatCurrency(revenue.rental)}</div>
+                    <div class="metric-label">${((revenue.rental / filing.totrevenue) * 100).toFixed(1)}% of revenue</div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function getCompensationSection(filing) {
+    if (!filing || !filing.totfuncexpns) return '';
+
+    const hasData = filing.compnsatncurrofcr || filing.othrsalwages || filing.payrolltx;
+    if (!hasData) return '';
+
+    const officerComp = filing.compnsatncurrofcr || 0;
+    const otherSalaries = filing.othrsalwages || 0;
+    const payrollTax = filing.payrolltx || 0;
+    const totalComp = officerComp + otherSalaries + payrollTax;
+
+    return `
+        <div class="section">
+            <h2 class="section-header">Compensation & Payroll (${filing.tax_prd_yr})</h2>
+            <div class="metric-grid">
+                ${officerComp > 0 ? `
+                <div class="metric-card">
+                    <h3>Officer Compensation</h3>
+                    <div class="metric-value">${formatCurrency(officerComp)}</div>
+                    <div class="metric-label">${((officerComp / filing.totfuncexpns) * 100).toFixed(1)}% of expenses</div>
+                </div>
+                ` : ''}
+                ${otherSalaries > 0 ? `
+                <div class="metric-card">
+                    <h3>Other Salaries & Wages</h3>
+                    <div class="metric-value">${formatCurrency(otherSalaries)}</div>
+                    <div class="metric-label">${((otherSalaries / filing.totfuncexpns) * 100).toFixed(1)}% of expenses</div>
+                </div>
+                ` : ''}
+                ${payrollTax > 0 ? `
+                <div class="metric-card">
+                    <h3>Payroll Taxes</h3>
+                    <div class="metric-value">${formatCurrency(payrollTax)}</div>
+                </div>
+                ` : ''}
+                ${totalComp > 0 ? `
+                <div class="metric-card">
+                    <h3>Total Compensation</h3>
+                    <div class="metric-value">${formatCurrency(totalComp)}</div>
+                    <div class="metric-label">${((totalComp / filing.totfuncexpns) * 100).toFixed(1)}% of expenses</div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function getFundraisingSection(filing) {
+    if (!filing) return '';
+
+    const hasData = filing.grsincfndrsng || filing.lessdirfndrsng || filing.profndraising;
+    if (!hasData) return '';
+
+    const grossIncome = filing.grsincfndrsng || 0;
+    const directExpenses = filing.lessdirfndrsng || 0;
+    const proFees = filing.profndraising || 0;
+    const netIncome = filing.netincfndrsng || (grossIncome - directExpenses);
+
+    const efficiency = directExpenses > 0 ? (grossIncome / directExpenses).toFixed(2) : 'N/A';
+    const netMargin = grossIncome > 0 ? ((netIncome / grossIncome) * 100).toFixed(1) : 'N/A';
+
+    return `
+        <div class="section">
+            <h2 class="section-header">Fundraising Analysis (${filing.tax_prd_yr})</h2>
+            <div class="metric-grid">
+                ${grossIncome > 0 ? `
+                <div class="metric-card">
+                    <h3>Gross Fundraising Income</h3>
+                    <div class="metric-value">${formatCurrency(grossIncome)}</div>
+                </div>
+                ` : ''}
+                ${directExpenses > 0 ? `
+                <div class="metric-card">
+                    <h3>Direct Fundraising Expenses</h3>
+                    <div class="metric-value">${formatCurrency(directExpenses)}</div>
+                </div>
+                ` : ''}
+                ${netIncome !== 0 ? `
+                <div class="metric-card">
+                    <h3>Net Fundraising Income</h3>
+                    <div class="metric-value">${formatCurrency(netIncome)}</div>
+                    ${netMargin !== 'N/A' ? `<div class="metric-label">${netMargin}% net margin</div>` : ''}
+                </div>
+                ` : ''}
+                ${efficiency !== 'N/A' && directExpenses > 0 ? `
+                <div class="metric-card">
+                    <h3>Fundraising Efficiency</h3>
+                    <div class="metric-value">$${efficiency}</div>
+                    <div class="metric-label">raised per $1 spent</div>
+                </div>
+                ` : ''}
+                ${proFees > 0 ? `
+                <div class="metric-card">
+                    <h3>Professional Fundraising Fees</h3>
+                    <div class="metric-value">${formatCurrency(proFees)}</div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function getFinancialHealthSection(filing) {
+    if (!filing || !filing.totrevenue) return '';
+
+    const ratios = calculateRatios(filing);
+    if (Object.keys(ratios).length === 0) return '';
+
+    return `
+        <div class="section">
+            <h2 class="section-header">Financial Health Indicators (${filing.tax_prd_yr})</h2>
+            <div class="metric-grid">
+                ${ratios.surplus !== undefined ? `
+                <div class="metric-card ${ratios.surplus >= 0 ? 'positive' : 'negative'}">
+                    <h3>${ratios.surplus >= 0 ? 'Surplus' : 'Deficit'}</h3>
+                    <div class="metric-value">${formatCurrency(Math.abs(ratios.surplus))}</div>
+                    <div class="metric-label">${ratios.surplusRatio}% of revenue</div>
+                </div>
+                ` : ''}
+                ${ratios.monthsReserve ? `
+                <div class="metric-card">
+                    <h3>Operating Reserves</h3>
+                    <div class="metric-value">${ratios.monthsReserve} months</div>
+                    <div class="metric-label">of operating expenses</div>
+                </div>
+                ` : ''}
+                ${ratios.programRatio ? `
+                <div class="metric-card">
+                    <h3>Program Expense Ratio</h3>
+                    <div class="metric-value">${ratios.programRatio}%</div>
+                    <div class="metric-label">goes to programs</div>
+                </div>
+                ` : ''}
+                ${ratios.fundraisingROI ? `
+                <div class="metric-card">
+                    <h3>Fundraising ROI</h3>
+                    <div class="metric-value">$${ratios.fundraisingROI}</div>
+                    <div class="metric-label">per dollar spent</div>
+                </div>
+                ` : ''}
             </div>
         </div>
     `;
@@ -299,10 +550,15 @@ async function showAnalysis(ein, orgName) {
         }
 
         const org = data.organization;
+        const latestFiling = getLatestFiling(data);
 
         // Compose modal content from sections
         document.getElementById('modalContent').innerHTML = `
             ${getFinancialTrendsSection(data)}
+            ${getFinancialHealthSection(latestFiling)}
+            ${getRevenueBreakdownSection(latestFiling)}
+            ${getCompensationSection(latestFiling)}
+            ${getFundraisingSection(latestFiling)}
             ${getOrgDetailsSection(org)}
             ${getFullReportSection(ein)}
         `;
