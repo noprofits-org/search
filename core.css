@@ -14,8 +14,8 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     line-height: 1.6;
-    color: #fff;
-    background-color: #1a1a1a;
+    color: var(--color-text);
+    background-color: var(--color-background);
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
@@ -24,7 +24,7 @@ body {
 h1, h2, h3 {
     margin: 1rem 0;
     font-weight: 600;
-    color: #fff;
+    color: var(--color-text);
 }
 
 h1 {
@@ -34,7 +34,7 @@ h1 {
 
 p {
     margin-bottom: 1rem;
-    color: #94a3b8;
+    color: var(--color-text-muted);
 }
 
 /* Header */
@@ -81,7 +81,7 @@ header {
 
 /* Links */
 a {
-    color: #4299e1;
+    color: var(--color-primary);
     text-decoration: none;
     transition: color 0.2s;
 }
@@ -99,6 +99,7 @@ a:hover {
 /* Colors - Dark Mode (Default) */
 :root {
     --color-primary: #4299e1;
+    --color-primary-hover: #3182ce;
     --color-background: #1a1a1a;
     --color-surface: #000;
     --color-border: #333;
@@ -112,6 +113,7 @@ a:hover {
 /* Light Mode */
 :root[data-theme="light"] {
     --color-primary: #2b6cb0;
+    --color-primary-hover: #2c5282;
     --color-background: #f7fafc;
     --color-surface: #ffffff;
     --color-border: #e2e8f0;
