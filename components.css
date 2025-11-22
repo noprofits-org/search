@@ -652,8 +652,27 @@
 }
 
 .metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.4;
+}
+
+.metric-label {
+    font-size: 0.875rem;
     color: var(--color-text-muted);
-    line-height: 1.6;
+    margin-top: 0.5rem;
+    font-weight: 400;
+}
+
+.metric-card.positive {
+    border-color: var(--color-success);
+    background-color: rgba(72, 187, 120, 0.1);
+}
+
+.metric-card.negative {
+    border-color: var(--color-error);
+    background-color: rgba(252, 129, 129, 0.1);
 }
 
 /* Modal Responsive Adjustments */
