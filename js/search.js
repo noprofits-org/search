@@ -69,8 +69,6 @@ function displayResults(data) {
         return;
     }
 
-    const resultsContainer = document.getElementById('resultsContainer');
-
     // Clear any existing results
     resultsContainer.innerHTML = '';
 
