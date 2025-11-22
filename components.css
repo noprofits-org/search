@@ -49,7 +49,7 @@
 }
 
 .search-button:hover {
-    background-color: #3182ce;
+    background-color: var(--color-primary-hover);
 }
 
 /* Recent Searches */
@@ -133,7 +133,7 @@
 }
 
 .button:hover {
-    background-color: #3182ce;
+    background-color: var(--color-primary-hover);
 }
 
 /* Card Components */
