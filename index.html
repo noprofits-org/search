@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nonprofit Search - NoProfits.org</title>
     
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Barlow+Condensed:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
     <!-- Design System Styles -->
     <link rel="stylesheet" href="core.css">
     <link rel="stylesheet" href="components.css">
@@ -16,39 +21,61 @@
 </head>
 
 <body>
-    <header>
-        <div class="header-content">
-            <h1><a href="https://noprofits.org">Noprofits.org</a></h1>
+    <header class="masthead">
+        <a class="brand" href="https://noprofits.org">
+            <span class="brand-tick"></span>
+            <span class="brand-word">NoProfits<span class="brand-word-sub">Search</span></span>
+        </a>
+        <nav class="masthead-nav">
+            <div class="nav-list">
+                <button class="nav-button active" data-tab="search">Search</button>
+                <button class="nav-button" data-tab="favorites">Favorites</button>
+                <button class="nav-button" data-tab="propublica-tags">ProPublica Tags</button>
+            </div>
             <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
                 <span class="theme-icon">☀️</span>
             </button>
-        </div>
+        </nav>
     </header>
 
     <main>
-        <nav class="nav-list">
-            <button class="nav-button active" data-tab="search">Search</button>
-            <button class="nav-button" data-tab="favorites">Favorites</button>
-            <button class="nav-button" data-tab="propublica-tags">ProPublica Tags</button>
-        </nav>
-
         <section class="tab-content active" data-tab="search">
-            <div class="search-container">
-                <input type="text" id="searchInput" class="search-input" placeholder="Enter organization name">
-                <button id="searchButton" class="search-button">Search</button>
-            </div>
-            <div id="filters" class="filters-container"></div>
-            <div id="resultsContainer" class="results-container"></div>
+            <section class="search-hero">
+                <div class="hero-inner">
+                    <div class="eyebrow">
+                        <span class="tick"></span>
+                        <span class="eyebrow-text">ProPublica Nonprofit Explorer · 1.8M+ Filers</span>
+                    </div>
+                    <h1 class="hero-title">Search every U.S. nonprofit's financials.</h1>
+                    <div class="search-container">
+                        <span class="search-icon" aria-hidden="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+                        </span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Organization name or EIN">
+                        <button id="searchButton" class="search-button">Search</button>
+                    </div>
+                    <div class="search-hint"><span class="search-hint-label">Try</span> a name like "Red Cross" or an EIN like 53-0196605</div>
+                    <div id="filters" class="filters-container"></div>
+                </div>
+            </section>
+            <section class="results-section">
+                <div id="resultsContainer" class="results-container"></div>
+            </section>
         </section>
         <section class="tab-content" data-tab="favorites">
-            <h2>Favorite Organizations</h2>
-            <p>Save organizations to quickly access them later. Your favorites are stored locally in your browser.</p>
+            <div class="page-head">
+                <span class="tick-lg"></span>
+                <h1 class="page-title">Favorites</h1>
+            </div>
+            <p class="page-sub">Saved organizations for quick access. <span class="mono-note">Stored locally in your browser — nothing leaves this device.</span></p>
             <div id="favoritesContainer" class="favorites-container"></div>
         </section>
         <section class="tab-content" data-tab="propublica-tags">
-            <h2>Key Nonprofit Financial Data from ProPublica</h2>
-            <p>This table provides a breakdown of key financial data points extracted from ProPublica's Nonprofit
-                Explorer. Use this information as a starting point for your own research and analysis.</p>
+            <div class="page-head">
+                <span class="tick-lg"></span>
+                <h1 class="page-title">ProPublica Tags</h1>
+            </div>
+            <p class="page-sub">A field dictionary for the financial data points returned by ProPublica's Nonprofit Explorer. Use these as a starting point for your own research and analysis.</p>
             <div class="propublica-tags">
                 <div class="tag-item">
                     <span class="tag-name">api_version</span>
@@ -293,8 +320,18 @@
     </main>
 
     <footer>
-        <div class="citation">Data sourced from <a href="https://projects.propublica.org/nonprofits/"
-                target="_blank">ProPublica Nonprofit Explorer</a></div>
+        <div class="footer-top">
+            <div class="brand">
+                <span class="brand-tick"></span>
+                <span class="brand-word">NoProfits<span class="brand-word-sub">Search</span></span>
+            </div>
+            <span class="footer-cite">Data sourced from <a href="https://projects.propublica.org/nonprofits/"
+                    target="_blank">ProPublica Nonprofit Explorer · projects.propublica.org/nonprofits</a></span>
+        </div>
+        <div class="footer-bottom">
+            <span>© 2026 NOPROFITS.ORG</span>
+            <span>FAVORITES STORED LOCALLY · NO TRACKING</span>
+        </div>
     </footer>
 
     <script type="module" src="js/search.js"></script>

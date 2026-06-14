@@ -6,14 +6,15 @@ import { numberWithCommas } from './utils.js';
  * Get theme-aware colors for charts
  */
 function getChartColors() {
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const styles = getComputedStyle(document.documentElement);
+    const tok = (name, fallback) => (styles.getPropertyValue(name).trim() || fallback);
 
     return {
-        gridColor: isLight ? '#e2e8f0' : '#333',
-        textColor: isLight ? '#1a202c' : '#fff',
-        revenue: '#4299e1',
-        expenses: '#f56565',
-        assets: '#48bb78'
+        gridColor: tok('--line', '#2E2A22'),
+        textColor: tok('--fg-soft', '#A8A69C'),
+        revenue: tok('--accent-text', '#CBB78E'),
+        expenses: tok('--neg', '#C98A6E'),
+        assets: tok('--pos', '#8FB07A')
     };
 }
 
