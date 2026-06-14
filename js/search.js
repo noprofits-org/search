@@ -47,7 +47,15 @@ function subsectionLabel(subseccd) {
     return n ? `501(c)(${n})` : null;
 }
 
-function escAttr(s) { return String(s ?? '').replace(/"/g, '&quot;'); }
+/** Escape for safe interpolation into HTML text or double-quoted attributes. */
+function escapeHtml(s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 /**
  * Build a single organization card (used by both search results and favorites).
@@ -62,7 +70,7 @@ function buildOrgCard(org, { withPreview = false } = {}) {
 
     const badges = [
         sub ? `<span class="badge badge-sub">${sub}</span>` : '',
-        cat ? `<span class="badge badge-ntee" title="NTEE ${escAttr(org.ntee_code)}">${cat}</span>` : ''
+        cat ? `<span class="badge badge-ntee" title="NTEE ${escapeHtml(org.ntee_code)}">${cat}</span>` : ''
     ].join('');
 
     const stats = withPreview ? `
@@ -73,24 +81,24 @@ function buildOrgCard(org, { withPreview = false } = {}) {
             </div>` : '';
 
     return `
-        <div class="org-card" data-ein="${escAttr(org.ein)}">
+        <div class="org-card" data-ein="${escapeHtml(org.ein)}">
             <div class="org-card-header">
                 <div class="org-title">
-                    <div class="org-name">${org.name}</div>
+                    <div class="org-name">${escapeHtml(org.name)}</div>
                     ${badges ? `<div class="org-badges">${badges}</div>` : ''}
                 </div>
                 <button class="favorite-btn ${favorited ? 'favorited' : ''}"
-                        data-ein="${escAttr(org.ein)}"
-                        data-name="${escAttr(org.name)}"
-                        data-city="${escAttr(org.city || '')}"
-                        data-state="${escAttr(org.state || '')}"
+                        data-ein="${escapeHtml(org.ein)}"
+                        data-name="${escapeHtml(org.name)}"
+                        data-city="${escapeHtml(org.city || '')}"
+                        data-state="${escapeHtml(org.state || '')}"
                         title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">${favorited ? '★' : '☆'}</button>
             </div>
-            <div class="org-meta">EIN ${escAttr(org.strein || org.ein)}${loc ? ` · ${loc}` : ''}</div>
+            <div class="org-meta">EIN ${escapeHtml(org.strein || org.ein)}${loc ? ` · ${escapeHtml(loc)}` : ''}</div>
             ${stats}
             <div class="org-actions">
-                <button class="btn btn-primary" data-action="analyze" data-ein="${escAttr(org.ein)}" data-name="${escAttr(org.name)}">Quick Analysis</button>
-                <a class="btn btn-secondary" href="https://projects.propublica.org/nonprofits/organizations/${escAttr(org.ein)}" target="_blank" rel="noopener">View on ProPublica ↗</a>
+                <button class="btn btn-primary" data-action="analyze" data-ein="${escapeHtml(org.ein)}" data-name="${escapeHtml(org.name)}">Quick Analysis</button>
+                <a class="btn btn-secondary" href="https://projects.propublica.org/nonprofits/organizations/${escapeHtml(org.ein)}" target="_blank" rel="noopener">View on ProPublica ↗</a>
             </div>
         </div>`;
 }
