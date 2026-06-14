@@ -20,6 +20,133 @@ import {
 
 let searchInput, searchButton, resultsContainer, modal, themeToggle;
 
+/* How many result cards get a live financial preview (bounded to keep the
+   proxy load + latency reasonable). */
+const PREVIEW_LIMIT = 6;
+const PREVIEW_CONCURRENCY = 3;
+
+/* NTEE major-group (first letter of the code) → human category label. */
+const NTEE_GROUPS = {
+    A: 'Arts & Culture', B: 'Education', C: 'Environment', D: 'Animal Welfare',
+    E: 'Health Care', F: 'Mental Health', G: 'Disease & Disorders',
+    H: 'Medical Research', I: 'Crime & Legal', J: 'Employment',
+    K: 'Food & Agriculture', L: 'Housing', M: 'Public Safety & Disaster',
+    N: 'Recreation & Sports', O: 'Youth Development', P: 'Human Services',
+    Q: 'International Affairs', R: 'Civil Rights', S: 'Community Improvement',
+    T: 'Philanthropy', U: 'Science & Tech', V: 'Social Science',
+    W: 'Public Benefit', X: 'Religion', Y: 'Mutual Benefit', Z: 'Unknown'
+};
+
+function nteeCategory(code) {
+    if (!code) return null;
+    return NTEE_GROUPS[String(code).trim().charAt(0).toUpperCase()] || null;
+}
+
+function subsectionLabel(subseccd) {
+    const n = parseInt(subseccd, 10);
+    return n ? `501(c)(${n})` : null;
+}
+
+function escAttr(s) { return String(s ?? '').replace(/"/g, '&quot;'); }
+
+/**
+ * Build a single organization card (used by both search results and favorites).
+ * @param {Object} org - org record (search results carry subseccd / ntee_code)
+ * @param {Object} opts - { withPreview } whether to include the lazy stat strip
+ */
+function buildOrgCard(org, { withPreview = false } = {}) {
+    const favorited = isFavorite(org.ein);
+    const sub = subsectionLabel(org.subseccd);
+    const cat = nteeCategory(org.ntee_code);
+    const loc = [org.city, org.state].filter(Boolean).join(', ');
+
+    const badges = [
+        sub ? `<span class="badge badge-sub">${sub}</span>` : '',
+        cat ? `<span class="badge badge-ntee" title="NTEE ${escAttr(org.ntee_code)}">${cat}</span>` : ''
+    ].join('');
+
+    const stats = withPreview ? `
+            <div class="org-stats" data-stats>
+                <div class="org-stat is-loading"><span class="org-stat-label">Revenue</span><span class="org-stat-value" data-stat="revenue">—</span></div>
+                <div class="org-stat is-loading"><span class="org-stat-label">Assets</span><span class="org-stat-value" data-stat="assets">—</span></div>
+                <div class="org-stat is-loading"><span class="org-stat-label">Fiscal Yr</span><span class="org-stat-value" data-stat="year">—</span></div>
+            </div>` : '';
+
+    return `
+        <div class="org-card" data-ein="${escAttr(org.ein)}">
+            <div class="org-card-header">
+                <div class="org-title">
+                    <div class="org-name">${org.name}</div>
+                    ${badges ? `<div class="org-badges">${badges}</div>` : ''}
+                </div>
+                <button class="favorite-btn ${favorited ? 'favorited' : ''}"
+                        data-ein="${escAttr(org.ein)}"
+                        data-name="${escAttr(org.name)}"
+                        data-city="${escAttr(org.city || '')}"
+                        data-state="${escAttr(org.state || '')}"
+                        title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">${favorited ? '★' : '☆'}</button>
+            </div>
+            <div class="org-meta">EIN ${escAttr(org.strein || org.ein)}${loc ? ` · ${loc}` : ''}</div>
+            ${stats}
+            <div class="org-actions">
+                <button class="btn btn-primary" data-action="analyze" data-ein="${escAttr(org.ein)}" data-name="${escAttr(org.name)}">Quick Analysis</button>
+                <a class="btn btn-secondary" href="https://projects.propublica.org/nonprofits/organizations/${escAttr(org.ein)}" target="_blank" rel="noopener">View on ProPublica ↗</a>
+            </div>
+        </div>`;
+}
+
+/** Wire favorite + analyze buttons for every card in a container. */
+function attachCardHandlers(container) {
+    container.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', handleFavoriteClick);
+    });
+    container.querySelectorAll('[data-action="analyze"]').forEach(btn => {
+        btn.addEventListener('click', () => showAnalysis(btn.dataset.ein, btn.dataset.name));
+    });
+}
+
+function setStat(card, key, value) {
+    const el = card.querySelector(`[data-stat="${key}"]`);
+    if (el) el.textContent = value;
+}
+
+/**
+ * Lazily fetch the latest filing for the first N cards and fill in the stat
+ * strip. Bounded concurrency, cached (30 min) via getNonprofitDetails, and
+ * fails silently — a card with no filing data just drops its stat strip.
+ */
+async function enrichCardsWithFinancials(container, eins, limit = PREVIEW_LIMIT) {
+    const queue = eins.slice(0, limit);
+
+    const worker = async () => {
+        while (queue.length) {
+            const ein = queue.shift();
+            const card = container.querySelector(`.org-card[data-ein="${ein}"]`);
+            if (!card) continue;
+            const statsEl = card.querySelector('[data-stats]');
+            if (!statsEl) continue;
+
+            try {
+                const data = await getNonprofitDetails(ein);
+                const filing = data?.filings_with_data?.[0];
+                if (filing && (filing.totrevenue || filing.totassetsend)) {
+                    setStat(card, 'revenue', filing.totrevenue ? formatCurrency(filing.totrevenue, true) : 'N/A');
+                    setStat(card, 'assets', filing.totassetsend ? formatCurrency(filing.totassetsend, true) : 'N/A');
+                    setStat(card, 'year', filing.tax_prd_yr ? 'FY' + filing.tax_prd_yr : '—');
+                    statsEl.querySelectorAll('.org-stat').forEach(s => s.classList.remove('is-loading'));
+                } else {
+                    statsEl.remove();
+                }
+            } catch (error) {
+                statsEl.remove();
+            }
+        }
+    };
+
+    const lanes = Math.min(PREVIEW_CONCURRENCY, queue.length);
+    await Promise.all(Array(lanes).fill(0).map(worker));
+}
+
 /**
  * Display historical filings data in a table format
  * @param {Array} filings - Array of filing data objects
@@ -76,52 +203,22 @@ function displayResults(data) {
     // Clear any existing results
     resultsContainer.innerHTML = '';
 
-    const resultsHTML = data.organizations.map(org => {
-        const favorited = isFavorite(org.ein);
-        const favoriteIcon = favorited ? '★' : '☆';
-        const favoriteClass = favorited ? 'favorited' : '';
+    const orgs = data.organizations;
+    resultsContainer.innerHTML = orgs
+        .map((org, i) => buildOrgCard(org, { withPreview: i < PREVIEW_LIMIT }))
+        .join('');
 
-        return `
-        <div class="org-card">
-            <div class="org-card-header">
-                <div class="org-name">${org.name}</div>
-                <button class="favorite-btn ${favoriteClass}"
-                        data-ein="${org.ein}"
-                        data-name="${org.name.replace(/"/g, '&quot;')}"
-                        data-city="${org.city || ''}"
-                        data-state="${org.state || ''}"
-                        title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">
-                    ${favoriteIcon}
-                </button>
-            </div>
-            <div class="org-meta">
-                EIN: ${org.ein}<br>
-                Location: ${org.city}, ${org.state}<br>
-                <a href="https://projects.propublica.org/nonprofits/organizations/${org.ein}" target="_blank">
-                    View on ProPublica
-                </a>
-                <br>
-                <a href="#" onclick="showAnalysis('${org.ein}', '${org.name.replace(/'/g, "\\'")}'); return false;">
-                    NoProfit Quick Analysis
-                </a>
-            </div>
-        </div>
-    `;
-    });
+    // Wire favorite + analyze buttons
+    attachCardHandlers(resultsContainer);
 
-    // Append the new results to the container
-    resultsContainer.innerHTML += resultsHTML.join('');
-
-    // Add event listeners to favorite buttons
-    resultsContainer.querySelectorAll('.favorite-btn').forEach(btn => {
-        btn.addEventListener('click', handleFavoriteClick);
-    });
-
-    // Now you can add a results count element if needed
+    // Results count
     const resultsCount = document.createElement('div');
     resultsCount.classList.add('results-count');
     resultsCount.textContent = `Found ${data.total_results} results`;
     resultsContainer.appendChild(resultsCount);
+
+    // Lazily pull a financial preview for the first few cards
+    enrichCardsWithFinancials(resultsContainer, orgs.map(o => o.ein));
 }
 
 /**
@@ -171,39 +268,15 @@ function displayFavorites() {
         return;
     }
 
-    const favoritesHTML = favorites.map(fav => `
-        <div class="org-card">
-            <div class="org-card-header">
-                <div class="org-name">${fav.name}</div>
-                <button class="favorite-btn favorited"
-                        data-ein="${fav.ein}"
-                        data-name="${fav.name.replace(/"/g, '&quot;')}"
-                        data-city="${fav.city || ''}"
-                        data-state="${fav.state || ''}"
-                        title="Remove from favorites">
-                    ★
-                </button>
-            </div>
-            <div class="org-meta">
-                EIN: ${fav.ein}<br>
-                ${fav.city && fav.state ? `Location: ${fav.city}, ${fav.state}<br>` : ''}
-                <a href="https://projects.propublica.org/nonprofits/organizations/${fav.ein}" target="_blank">
-                    View on ProPublica
-                </a>
-                <br>
-                <a href="#" onclick="showAnalysis('${fav.ein}', '${fav.name.replace(/'/g, "\\'")}'); return false;">
-                    NoProfit Quick Analysis
-                </a>
-            </div>
-        </div>
-    `).join('');
+    favoritesContainer.innerHTML = favorites
+        .map(fav => buildOrgCard(fav, { withPreview: true }))
+        .join('');
 
-    favoritesContainer.innerHTML = favoritesHTML;
+    // Wire favorite + analyze buttons
+    attachCardHandlers(favoritesContainer);
 
-    // Add event listeners to favorite buttons
-    favoritesContainer.querySelectorAll('.favorite-btn').forEach(btn => {
-        btn.addEventListener('click', handleFavoriteClick);
-    });
+    // Lazily pull a financial preview for the saved orgs (cap to keep it polite)
+    enrichCardsWithFinancials(favoritesContainer, favorites.map(f => f.ein), 24);
 }
 
 /**
