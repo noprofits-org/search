@@ -57,6 +57,12 @@ function escapeHtml(s) {
         .replace(/'/g, '&#39;');
 }
 
+/** Only allow http(s) URLs into href; blocks javascript:/data: schemes. */
+function safeUrl(url) {
+    const u = String(url ?? '').trim();
+    return /^https?:\/\//i.test(u) ? u : '';
+}
+
 /**
  * Build a single organization card (used by both search results and favorites).
  * @param {Object} org - org record (search results carry subseccd / ntee_code)
@@ -176,7 +182,7 @@ function displayFilingsHistory(filings) {  // <--- Restored function
             <tbody>
                 ${filings.map(filing => `
                     <tr>
-                        <td data-label="Year">${filing.tax_prd_yr || 'N/A'}</td>
+                        <td data-label="Year">${escapeHtml(filing.tax_prd_yr || 'N/A')}</td>
                         <td data-label="Revenue">${filing.totrevenue ? '$' + numberWithCommas(filing.totrevenue) : 'N/A'}</td>
                         <td data-label="Expenses">${filing.totfuncexpns ? '$' + numberWithCommas(filing.totfuncexpns) : 'N/A'}</td>
                         <td data-label="Assets">${filing.totassetsend ? '$' + numberWithCommas(filing.totassetsend) : 'N/A'}</td>
@@ -334,8 +340,8 @@ function getOrgDetailsSection(org) {
                 <div class="metric-card">
                     <h3>Organization Info</h3>
                     <div class="metric-value">
-                        EIN: ${org.ein}<br>
-                        Location: ${org.city}, ${org.state}<br>
+                        EIN: ${escapeHtml(org.ein)}<br>
+                        Location: ${escapeHtml(org.city)}, ${escapeHtml(org.state)}<br>
                         Tax-Exempt Since: ${formatDate(org.tax_exempt_since)}<br>
                         Last Filing: ${formatDate(org.latest_filing_date)}
                     </div>
@@ -343,9 +349,9 @@ function getOrgDetailsSection(org) {
                 <div class="metric-card">
                     <h3>Classification</h3>
                     <div class="metric-value">
-                        NTEE Code: ${org.ntee_code || 'N/A'}<br>
-                        Subsection: ${org.subsection_code || 'N/A'}<br>
-                        Foundation Status: ${org.foundation_code || 'N/A'}
+                        NTEE Code: ${escapeHtml(org.ntee_code || 'N/A')}<br>
+                        Subsection: ${escapeHtml(org.subsection_code || 'N/A')}<br>
+                        Foundation Status: ${escapeHtml(org.foundation_code || 'N/A')}
                     </div>
                 </div>
                 <div class="metric-card">
@@ -353,15 +359,15 @@ function getOrgDetailsSection(org) {
                     <div class="metric-value">
                         Revenue: ${formatCurrency(org.income_amount)}<br>
                         Assets: ${formatCurrency(org.asset_amount)}<br>
-                        ${org.exemption_number ? 'Exemption: ' + org.exemption_number : ''}
+                        ${org.exemption_number ? 'Exemption: ' + escapeHtml(org.exemption_number) : ''}
                     </div>
                 </div>
                 <div class="metric-card">
                     <h3>Contact Information</h3>
                     <div class="metric-value">
-                        Address: ${org.address ? `${org.address}, ${org.city}, ${org.state}` : 'N/A'}<br>
-                        ZIP: ${org.zipcode || 'N/A'}<br>
-                        ${org.website ? `Website: <a href="${org.website}" target="_blank" class="text-blue-500">${org.website}</a>` : ''}
+                        Address: ${org.address ? `${escapeHtml(org.address)}, ${escapeHtml(org.city)}, ${escapeHtml(org.state)}` : 'N/A'}<br>
+                        ZIP: ${escapeHtml(org.zipcode || 'N/A')}<br>
+                        ${org.website && safeUrl(org.website) ? `Website: <a href="${escapeHtml(safeUrl(org.website))}" target="_blank" rel="noopener" class="text-blue-500">${escapeHtml(org.website)}</a>` : ''}
                     </div>
                 </div>
             </div>
@@ -387,7 +393,7 @@ function getRevenueBreakdownSection(filing) {
 
     return `
         <div class="section">
-            <h2 class="section-header">Revenue Sources (${filing.tax_prd_yr})</h2>
+            <h2 class="section-header">Revenue Sources (${escapeHtml(filing.tax_prd_yr)})</h2>
             <div class="metric-grid">
                 ${revenue.contributions > 0 ? `
                 <div class="metric-card">
@@ -449,7 +455,7 @@ function getCompensationSection(filing) {
 
     return `
         <div class="section">
-            <h2 class="section-header">Compensation & Payroll (${filing.tax_prd_yr})</h2>
+            <h2 class="section-header">Compensation & Payroll (${escapeHtml(filing.tax_prd_yr)})</h2>
             <div class="metric-grid">
                 ${officerComp > 0 ? `
                 <div class="metric-card">
@@ -499,7 +505,7 @@ function getFundraisingSection(filing) {
 
     return `
         <div class="section">
-            <h2 class="section-header">Fundraising Analysis (${filing.tax_prd_yr})</h2>
+            <h2 class="section-header">Fundraising Analysis (${escapeHtml(filing.tax_prd_yr)})</h2>
             <div class="metric-grid">
                 ${grossIncome > 0 ? `
                 <div class="metric-card">
@@ -546,7 +552,7 @@ function getFinancialHealthSection(filing) {
 
     return `
         <div class="section">
-            <h2 class="section-header">Financial Health Indicators (${filing.tax_prd_yr})</h2>
+            <h2 class="section-header">Financial Health Indicators (${escapeHtml(filing.tax_prd_yr)})</h2>
             <div class="metric-grid">
                 ${ratios.surplus !== undefined ? `
                 <div class="metric-card ${ratios.surplus >= 0 ? 'positive' : 'negative'}">
@@ -587,8 +593,9 @@ function getFullReportSection(ein) {
             <h2 class="section-header">Full Report</h2>
             <div class="metric-card">
                 <div class="metric-value">
-                    <a href="https://projects.propublica.org/nonprofits/organizations/${ein}" 
-                       target="_blank" 
+                    <a href="https://projects.propublica.org/nonprofits/organizations/${encodeURIComponent(ein)}"
+                       target="_blank"
+                       rel="noopener"
                        class="text-blue-500">
                         View on ProPublica →
                     </a>
@@ -615,8 +622,9 @@ async function showAnalysis(ein, orgName) {
                 <div class="error-message">
                     Unable to retrieve nonprofit details. Please try again later.
                     <br><br>
-                    <a href="https://projects.propublica.org/nonprofits/organizations/${ein}" 
+                    <a href="https://projects.propublica.org/nonprofits/organizations/${encodeURIComponent(ein)}"
                        target="_blank"
+                       rel="noopener"
                        class="text-blue-500">
                         View on ProPublica →
                     </a>
@@ -652,10 +660,11 @@ async function showAnalysis(ein, orgName) {
         console.error('Analysis Error:', error);
         document.getElementById('modalContent').innerHTML = `
             <div class="error-message">
-                Unable to load analysis: ${error.message}
+                Unable to load analysis: ${escapeHtml(error.message)}
                 <br><br>
-                <a href="https://projects.propublica.org/nonprofits/organizations/${ein}" 
+                <a href="https://projects.propublica.org/nonprofits/organizations/${encodeURIComponent(ein)}"
                    target="_blank"
+                   rel="noopener"
                    class="text-blue-500">
                     View on ProPublica →
                 </a>
@@ -759,7 +768,7 @@ async function handleSearch() {
         console.error('Search error:', error);
         resultsContainer.innerHTML = `
             <div class="error-message">
-                Error: ${error.message}<br>
+                Error: ${escapeHtml(error.message)}<br>
                 Please try again later or visit
                 <a href="https://projects.propublica.org/nonprofits/" target="_blank">
                     ProPublica Nonprofit Explorer
