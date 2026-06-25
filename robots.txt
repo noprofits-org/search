@@ -1,0 +1,5 @@
+# search.noprofits.org — public nonprofit search tool (ProPublica data).
+User-agent: *
+Allow: /
+
+Sitemap: https://search.noprofits.org/sitemap.xml
